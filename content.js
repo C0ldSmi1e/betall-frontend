@@ -1,10 +1,7 @@
 (function() {
   'use strict';
   
-  // Prevent multiple script injections
-  if (window.polymarketExtensionLoaded) {
-    return;
-  }
+  if (window.polymarketExtensionLoaded) return;
   window.polymarketExtensionLoaded = true;
 
   let currentIcon = null;
@@ -16,10 +13,11 @@
     icon.className = 'polymarket-icon';
     icon.setAttribute('data-polymarket-extension', 'true');
     
-    // Add explicit pointer events to ensure the icon captures mouse events
-    icon.style.pointerEvents = 'all';
-    icon.style.position = 'absolute';
-    icon.style.zIndex = '999999';
+    Object.assign(icon.style, {
+      pointerEvents: 'all',
+      position: 'absolute',
+      zIndex: '999999'
+    });
     
     return icon;
   }
@@ -44,87 +42,65 @@
   }
 
   function showLoadingModal() {
-    hideLoadingModal(); // Remove any existing modal
+    hideLoadingModal();
     
     loadingModal = createLoadingModal();
-    
-    // Add close handlers
-    const closeBtn = loadingModal.querySelector('.polymarket-close-btn');
-    const backdrop = loadingModal.querySelector('.polymarket-modal-backdrop');
-    
-    closeBtn.addEventListener('click', hideLoadingModal);
-    backdrop.addEventListener('click', hideLoadingModal);
-    
+    addModalHandlers(loadingModal, hideLoadingModal);
     document.body.appendChild(loadingModal);
     
-    // Animate in
-    setTimeout(() => {
-      if (loadingModal) {
-        loadingModal.classList.add('polymarket-modal-show');
-      }
-    }, 10);
+    setTimeout(() => loadingModal?.classList.add('polymarket-modal-show'), 10);
   }
 
   function hideLoadingModal() {
-    if (loadingModal) {
-      loadingModal.remove();
-      loadingModal = null;
-    }
+    loadingModal?.remove();
+    loadingModal = null;
   }
 
   function positionIcon(icon, selection) {
     if (!selection.rangeCount) return;
     
-    const range = selection.getRangeAt(0);
-    const rect = range.getBoundingClientRect();
-    
-    // Position icon at the end of selection
+    const rect = selection.getRangeAt(0).getBoundingClientRect();
     icon.style.left = `${window.scrollX + rect.right + 5}px`;
     icon.style.top = `${window.scrollY + rect.top}px`;
   }
 
   function showIcon(selectedText) {
-    hideIcon(); // Remove any existing icon
+    hideIcon();
     
     const selection = window.getSelection();
     if (!selection.rangeCount) return;
     
     currentIcon = createFloatingIcon();
     positionIcon(currentIcon, selection);
-    
-    currentIcon.addEventListener('mousedown', (e) => {
+    currentIcon.addEventListener('mousedown', handleIconClick(selectedText));
+    document.body.appendChild(currentIcon);
+  }
+
+  function handleIconClick(selectedText) {
+    return (e) => {
       iconClicked = true;
       e.preventDefault();
       e.stopPropagation();
       
-      // Trigger the action immediately on mousedown
       setTimeout(() => {
         showLoadingModal();
         
-        console.log('Sending message to background:', selectedText);
-        
-        // Send message to background script
         chrome.runtime.sendMessage({
           action: 'matchMarkets',
           text: selectedText
-        }).catch((error) => {
-          console.error('Failed to send message:', error);
+        }).catch(() => {
           hideLoadingModal();
           showErrorModal('Extension context invalidated. Please refresh the page.');
         });
         
         hideIcon();
       }, 10);
-    });
-    
-    document.body.appendChild(currentIcon);
+    };
   }
 
   function hideIcon() {
-    if (currentIcon) {
-      currentIcon.remove();
-      currentIcon = null;
-    }
+    currentIcon?.remove();
+    currentIcon = null;
   }
 
   function handleTextSelection() {
@@ -133,135 +109,103 @@
       return;
     }
     
-    const selection = window.getSelection();
-    const selectedText = selection.toString().trim();
+    const selectedText = window.getSelection().toString().trim();
+    selectedText.length >= 10 ? showIcon(selectedText) : hideIcon();
+  }
+
+  function addModalHandlers(modal, closeHandler) {
+    const closeBtn = modal.querySelector('.polymarket-close-btn');
+    const backdrop = modal.querySelector('.polymarket-modal-backdrop');
     
-    // Only show icon if selection is 10+ characters
-    if (selectedText.length >= 10) {
-      showIcon(selectedText);
-    } else {
-      hideIcon();
-    }
+    closeBtn?.addEventListener('click', closeHandler);
+    backdrop?.addEventListener('click', closeHandler);
   }
 
 
-  function showMarketModal(market) {
+  function createModal(content, isMarketModal = false) {
     const modal = document.createElement('div');
-    modal.className = 'polymarket-loading-modal polymarket-modal-show';
+    modal.className = `polymarket-loading-modal polymarket-modal-show`;
+    
+    const modalContentClass = isMarketModal ? 'polymarket-modal-content polymarket-market-modal' : 'polymarket-modal-content';
+    
     modal.innerHTML = `
       <div class="polymarket-modal-backdrop"></div>
-      <div class="polymarket-modal-content polymarket-market-modal">
+      <div class="${modalContentClass}">
         <div class="polymarket-modal-header">
           <div class="polymarket-label">POLYMARKET</div>
           <button class="polymarket-close-btn">&times;</button>
         </div>
-        <div class="polymarket-market-content">
-          <h2 class="polymarket-market-title">${escapeHtml(market.question)}</h2>
-          
-          <div class="polymarket-bet-options">
-            <div class="polymarket-bet-option polymarket-yes-option">
-              <div class="polymarket-option-info">
-                <span class="polymarket-outcome-label">Yes</span>
-                <span class="polymarket-outcome-percentage">${market.yesPercentage}%</span>
-              </div>
-              <div class="polymarket-payout-info">
-                <span class="polymarket-bet-amount">$10 →</span>
-                <span class="polymarket-payout-amount">$${market.yesPayout}</span>
-              </div>
-            </div>
+        ${content}
+      </div>
+    `;
+    
+    const closeModal = () => modal.remove();
+    const closeBtn = modal.querySelector('.polymarket-close-btn');
+    const backdrop = modal.querySelector('.polymarket-modal-backdrop');
+    
+    closeBtn.addEventListener('click', closeModal);
+    backdrop.addEventListener('click', closeModal);
+    
+    document.body.appendChild(modal);
+    return modal;
+  }
 
-            <div class="polymarket-bet-option polymarket-no-option">
-              <div class="polymarket-option-info">
-                <span class="polymarket-outcome-label">No</span>
-                <span class="polymarket-outcome-percentage">${market.noPercentage}%</span>
-              </div>
-              <div class="polymarket-payout-info">
-                <span class="polymarket-bet-amount">$10 →</span>
-                <span class="polymarket-payout-amount">$${market.noPayout}</span>
-              </div>
+  function showMarketModal(market) {
+    const content = `
+      <div class="polymarket-market-content">
+        <h2 class="polymarket-market-title">${escapeHtml(market.question)}</h2>
+        
+        <div class="polymarket-bet-options">
+          <div class="polymarket-bet-option polymarket-yes-option">
+            <div class="polymarket-option-info">
+              <span class="polymarket-outcome-label">Yes</span>
+              <span class="polymarket-outcome-percentage">${market.yesPercentage}%</span>
+            </div>
+            <div class="polymarket-payout-info">
+              <span class="polymarket-bet-amount">$10 →</span>
+              <span class="polymarket-payout-amount">$${market.yesPayout}</span>
             </div>
           </div>
 
-          <a href="${escapeHtml(market.url)}" target="_blank" class="polymarket-place-bet-button">
-            Place Bet
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M7 17L17 7M17 7H7M17 7V17" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </a>
+          <div class="polymarket-bet-option polymarket-no-option">
+            <div class="polymarket-option-info">
+              <span class="polymarket-outcome-label">No</span>
+              <span class="polymarket-outcome-percentage">${market.noPercentage}%</span>
+            </div>
+            <div class="polymarket-payout-info">
+              <span class="polymarket-bet-amount">$10 →</span>
+              <span class="polymarket-payout-amount">$${market.noPayout}</span>
+            </div>
+          </div>
         </div>
+
+        <a href="${escapeHtml(market.url)}" target="_blank" class="polymarket-place-bet-button">
+          Place Bet
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M7 17L17 7M17 7H7M17 7V17" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </a>
       </div>
     `;
-    
-    // Add close handlers
-    const closeBtn = modal.querySelector('.polymarket-close-btn');
-    const backdrop = modal.querySelector('.polymarket-modal-backdrop');
-    
-    const closeModal = () => {
-      modal.remove();
-    };
-    
-    closeBtn.addEventListener('click', closeModal);
-    backdrop.addEventListener('click', closeModal);
-    
-    document.body.appendChild(modal);
+    createModal(content, true);
   }
 
   function showErrorModal(error) {
-    const modal = document.createElement('div');
-    modal.className = 'polymarket-loading-modal polymarket-modal-show';
-    modal.innerHTML = `
-      <div class="polymarket-modal-backdrop"></div>
-      <div class="polymarket-modal-content">
-        <div class="polymarket-modal-header">
-          <div class="polymarket-label">POLYMARKET</div>
-          <button class="polymarket-close-btn">&times;</button>
-        </div>
-        <div class="polymarket-loading-content">
-          <p style="color: #FF5A7A;">${escapeHtml(error)}</p>
-        </div>
+    const content = `
+      <div class="polymarket-loading-content">
+        <p style="color: #FF5A7A;">${escapeHtml(error)}</p>
       </div>
     `;
-    
-    const closeBtn = modal.querySelector('.polymarket-close-btn');
-    const backdrop = modal.querySelector('.polymarket-modal-backdrop');
-    
-    const closeModal = () => {
-      modal.remove();
-    };
-    
-    closeBtn.addEventListener('click', closeModal);
-    backdrop.addEventListener('click', closeModal);
-    
-    document.body.appendChild(modal);
+    createModal(content);
   }
 
   function showEmptyModal() {
-    const modal = document.createElement('div');
-    modal.className = 'polymarket-loading-modal polymarket-modal-show';
-    modal.innerHTML = `
-      <div class="polymarket-modal-backdrop"></div>
-      <div class="polymarket-modal-content">
-        <div class="polymarket-modal-header">
-          <div class="polymarket-label">POLYMARKET</div>
-          <button class="polymarket-close-btn">&times;</button>
-        </div>
-        <div class="polymarket-loading-content">
-          <p>No prediction markets found for your selection.</p>
-        </div>
+    const content = `
+      <div class="polymarket-loading-content">
+        <p>No prediction markets found for your selection.</p>
       </div>
     `;
-    
-    const closeBtn = modal.querySelector('.polymarket-close-btn');
-    const backdrop = modal.querySelector('.polymarket-modal-backdrop');
-    
-    const closeModal = () => {
-      modal.remove();
-    };
-    
-    closeBtn.addEventListener('click', closeModal);
-    backdrop.addEventListener('click', closeModal);
-    
-    document.body.appendChild(modal);
+    createModal(content);
   }
 
   function escapeHtml(text) {
@@ -276,16 +220,25 @@
   }
 
   // Listen for messages from background script
-  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    if (message.action === 'showMarket') {
+  const messageHandlers = {
+    showMarket: (message) => {
       hideLoadingModal();
       showMarketModal(message.market);
-    } else if (message.action === 'showError') {
+    },
+    showError: (message) => {
       hideLoadingModal();
       showErrorModal(message.error);
-    } else if (message.action === 'showEmpty') {
+    },
+    showEmpty: () => {
       hideLoadingModal();
       showEmptyModal();
+    }
+  };
+
+  chrome.runtime.onMessage.addListener((message) => {
+    const handler = messageHandlers[message.action];
+    if (handler) {
+      handler(message);
     }
   });
 
