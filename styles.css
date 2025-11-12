@@ -1,0 +1,40 @@
+/* Only define floating icon styles for content script injection */
+
+/* Floating Icon in content.js */
+.polymarket-icon {
+  position: absolute;
+  width: 32px;
+  height: 32px;
+  background: linear-gradient(135deg, #6B4CE6 0%, #9B51E0 100%);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  z-index: 999999;
+  transition: transform 0.2s, box-shadow 0.2s;
+  animation: fadeIn 0.2s;
+}
+
+.polymarket-icon:hover {
+  transform: scale(1.1);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+}
+
+.polymarket-icon::after {
+  content: '🎯';
+  font-size: 18px;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
