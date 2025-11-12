@@ -5,7 +5,8 @@
   "description": "Find relevant Polymarket prediction markets for selected text",
   "permissions": [
     "activeTab",
-    "storage"
+    "storage",
+    "tabs"
   ],
   "host_permissions": [
     "https://betall.de-mo.app/*",

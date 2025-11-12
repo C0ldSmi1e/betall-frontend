@@ -1,115 +1,90 @@
-chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === 'matchMarkets') {
-    try {
-      await handleMatchMarkets(message.text);
-    } catch (error) {
-      console.error('Error matching markets:', error);
-      // Store error state
-      chrome.storage.local.set({ 
-        markets: [], 
-        error: 'Failed to fetch markets. Please try again.' 
-      });
-      // Still open popup to show error
-      chrome.windows.create({
-        url: 'popup.html',
-        type: 'popup',
-        width: 400,
-        height: 600
-      });
-    }
+    handleMatchMarkets(message.text, sender.tab.id);
+    return true; // Keep the message channel open for async response
   }
 });
 
-async function handleMatchMarkets(text) {
+async function handleMatchMarkets(text, tabId) {
   try {
-    // Clear previous results
-    chrome.storage.local.set({ markets: [], error: null });
-    
     // Step 1: Call matching API to get slugs
     const matchUrl = `https://betall.de-mo.app/api/match?query=${encodeURIComponent(text)}`;
-    console.log('Calling match API:', matchUrl);
     
-    const matchResponse = await fetchWithTimeout(matchUrl, 10000);
+    const matchResponse = await fetch(matchUrl);
     if (!matchResponse.ok) {
       throw new Error(`Match API returned ${matchResponse.status}`);
     }
     
-    const slugs = await matchResponse.json();
-    console.log('Got slugs:', slugs);
+    const response = await matchResponse.json();
+    
+    // Handle API response format: { error, data: { slugs: [...] } }
+    if (response.error) {
+      throw new Error(`Match API error: ${response.error}`);
+    }
+    
+    const slugs = response.data?.slugs || [];
     
     if (!Array.isArray(slugs) || slugs.length === 0) {
-      // No markets found
-      chrome.storage.local.set({ markets: [], error: null });
-      chrome.windows.create({
-        url: 'popup.html',
-        type: 'popup',
-        width: 400,
-        height: 600
-      });
+      chrome.tabs.sendMessage(tabId, { action: 'showEmpty' });
       return;
     }
     
-    // Step 2: Fetch market details for each slug in parallel
-    const marketPromises = slugs.map(async (slug) => {
-      try {
-        const marketUrl = `https://gamma-api.polymarket.com/markets/slug/${slug}`;
-        console.log('Fetching market:', marketUrl);
-        
-        const marketResponse = await fetchWithTimeout(marketUrl, 10000);
-        if (!marketResponse.ok) {
-          console.warn(`Failed to fetch market ${slug}: ${marketResponse.status}`);
-          return null;
-        }
-        
-        const marketData = await marketResponse.json();
-        console.log('Got market data for', slug, ':', marketData);
-        return marketData;
-      } catch (error) {
-        console.warn(`Error fetching market ${slug}:`, error);
-        return null;
-      }
-    });
+    // Step 2: Fetch market details for the first slug
+    const firstSlug = slugs[0];
+    const marketUrl = `https://gamma-api.polymarket.com/markets/slug/${firstSlug}`;
     
-    const marketResults = await Promise.all(marketPromises);
-    const validMarkets = marketResults.filter(market => market !== null);
+    const marketResponse = await fetch(marketUrl);
+    if (!marketResponse.ok) {
+      throw new Error(`Failed to fetch market ${firstSlug}: ${marketResponse.status}`);
+    }
     
-    console.log('Valid markets:', validMarkets);
+    const marketData = await marketResponse.json();
     
-    // Step 3: Store results and open popup
-    chrome.storage.local.set({ markets: validMarkets, error: null });
-    
-    chrome.windows.create({
-      url: 'popup.html',
-      type: 'popup',
-      width: 400,
-      height: 600
+    // Format and send market data
+    const formattedMarket = formatMarket(marketData);
+    chrome.tabs.sendMessage(tabId, {
+      action: 'showMarket',
+      market: formattedMarket
     });
     
   } catch (error) {
-    console.error('Error in handleMatchMarkets:', error);
-    throw error;
+    console.error('Error in background script:', error);
+    chrome.tabs.sendMessage(tabId, {
+      action: 'showError',
+      error: 'Failed to fetch markets. Please try again.'
+    });
   }
 }
 
-async function fetchWithTimeout(url, timeout = 10000) {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeout);
-  
+function calculatePayout(price, betAmount = 10) {
+  return (betAmount / parseFloat(price)).toFixed(2);
+}
+
+function formatMarket(data) {
+  // Parse outcomePrices - they come as JSON string array
+  let outcomePrices = [];
   try {
-    const response = await fetch(url, {
-      signal: controller.signal,
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json'
-      }
-    });
-    clearTimeout(timeoutId);
-    return response;
-  } catch (error) {
-    clearTimeout(timeoutId);
-    if (error.name === 'AbortError') {
-      throw new Error('Request timed out');
+    if (typeof data.outcomePrices === 'string') {
+      outcomePrices = JSON.parse(data.outcomePrices);
+    } else if (Array.isArray(data.outcomePrices)) {
+      outcomePrices = data.outcomePrices;
     }
-    throw error;
+  } catch (e) {
+    console.error('Error parsing outcomePrices:', e);
+    outcomePrices = ['0.5', '0.5']; // fallback
   }
+  
+  // Convert string prices to numbers
+  const yesPrice = parseFloat(outcomePrices[0] || '0.5');
+  const noPrice = parseFloat(outcomePrices[1] || '0.5');
+  
+  return {
+    question: data.question || 'Unknown Market',
+    slug: data.slug || '',
+    yesPercentage: (yesPrice * 100).toFixed(0),
+    noPercentage: (noPrice * 100).toFixed(0),
+    yesPayout: calculatePayout(yesPrice, 10),
+    noPayout: calculatePayout(noPrice, 10),
+    url: `https://polymarket.com/event/${data.slug || ''}`
+  };
 }
