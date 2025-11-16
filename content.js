@@ -4,23 +4,8 @@
   if (window.polymarketExtensionLoaded) return;
   window.polymarketExtensionLoaded = true;
 
-  let currentIcon = null;
   let loadingModal = null;
-  let iconClicked = false;
 
-  function createFloatingIcon() {
-    const icon = document.createElement('div');
-    icon.className = 'polymarket-icon';
-    icon.setAttribute('data-polymarket-extension', 'true');
-    
-    Object.assign(icon.style, {
-      pointerEvents: 'all',
-      position: 'absolute',
-      zIndex: '999999'
-    });
-    
-    return icon;
-  }
 
   function createLoadingModal() {
     const modal = document.createElement('div');
@@ -56,62 +41,7 @@
     loadingModal = null;
   }
 
-  function positionIcon(icon, selection) {
-    if (!selection.rangeCount) return;
-    
-    const rect = selection.getRangeAt(0).getBoundingClientRect();
-    icon.style.left = `${window.scrollX + rect.right + 5}px`;
-    icon.style.top = `${window.scrollY + rect.top}px`;
-  }
 
-  function showIcon(selectedText) {
-    hideIcon();
-    
-    const selection = window.getSelection();
-    if (!selection.rangeCount) return;
-    
-    currentIcon = createFloatingIcon();
-    positionIcon(currentIcon, selection);
-    currentIcon.addEventListener('mousedown', handleIconClick(selectedText));
-    document.body.appendChild(currentIcon);
-  }
-
-  function handleIconClick(selectedText) {
-    return (e) => {
-      iconClicked = true;
-      e.preventDefault();
-      e.stopPropagation();
-      
-      setTimeout(() => {
-        showLoadingModal();
-        
-        chrome.runtime.sendMessage({
-          action: 'matchMarkets',
-          text: selectedText
-        }).catch(() => {
-          hideLoadingModal();
-          showErrorModal('Extension context invalidated. Please refresh the page.');
-        });
-        
-        hideIcon();
-      }, 10);
-    };
-  }
-
-  function hideIcon() {
-    currentIcon?.remove();
-    currentIcon = null;
-  }
-
-  function handleTextSelection() {
-    if (iconClicked) {
-      iconClicked = false;
-      return;
-    }
-    
-    const selectedText = window.getSelection().toString().trim();
-    selectedText.length >= 10 ? showIcon(selectedText) : hideIcon();
-  }
 
   function addModalHandlers(modal, closeHandler) {
     const closeBtn = modal.querySelector('.polymarket-close-btn');
@@ -222,16 +152,22 @@
   // Listen for messages from background script
   const messageHandlers = {
     showMarket: (message) => {
-      hideLoadingModal();
-      showMarketModal(message.market);
+      console.log('📈 MARKET FOUND:', message.market);
+      console.log('Market details:', {
+        question: message.market.question,
+        slug: message.market.slug,
+        yesPercentage: message.market.yesPercentage,
+        noPercentage: message.market.noPercentage,
+        yesPayout: message.market.yesPayout,
+        noPayout: message.market.noPayout,
+        url: message.market.url
+      });
     },
     showError: (message) => {
-      hideLoadingModal();
-      showErrorModal(message.error);
+      console.log('❌ API ERROR:', message.error);
     },
     showEmpty: () => {
-      hideLoadingModal();
-      showEmptyModal();
+      console.log('🔍 NO MARKETS FOUND for this tweet');
     }
   };
 
@@ -242,34 +178,108 @@
     }
   });
 
-  // Event listeners
-  document.addEventListener('mouseup', (e) => {
-    if (e.target.closest('.polymarket-icon')) {
-      return;
-    }
-    handleTextSelection();
-  });
+  // Twitter Integration
+  function isTwitter() {
+    return window.location.hostname === 'twitter.com' || window.location.hostname === 'x.com';
+  }
 
-  document.addEventListener('click', (e) => {
-    if (e.target.closest('.polymarket-icon')) {
+  function extractTweetText(tweetElement) {
+    // Try to find tweet text content
+    const tweetTextSelector = '[data-testid="tweetText"]';
+    const textElement = tweetElement.querySelector(tweetTextSelector);
+    
+    if (textElement) {
+      const text = textElement.textContent.trim();
+      console.log('Tweet detected:', text);
+      return text;
+    }
+    
+    return null;
+  }
+
+  async function processTweet(tweetElement) {
+    // Avoid processing the same tweet multiple times
+    if (tweetElement.hasAttribute('data-polymarket-processed')) {
       return;
     }
     
-    setTimeout(() => {
-      const selection = window.getSelection();
-      if (!selection.toString().trim()) {
-        hideIcon();
+    const tweetText = extractTweetText(tweetElement);
+    if (tweetText && tweetText.length >= 10) {
+      tweetElement.setAttribute('data-polymarket-processed', 'true');
+      console.log('Processing tweet:', tweetText);
+      
+      // Send to server
+      try {
+        await sendTweetToServer(tweetText, tweetElement);
+      } catch (error) {
+        console.error('Error processing tweet:', error);
       }
-    }, 100);
-  });
-
-  window.addEventListener('scroll', hideIcon);
-
-  document.addEventListener('selectionchange', () => {
-    const selection = window.getSelection();
-    if (!selection.toString().trim()) {
-      hideIcon();
     }
-  });
+  }
+
+  async function sendTweetToServer(tweetText, tweetElement) {
+    console.log('Sending tweet to server:', tweetText);
+    
+    try {
+      // Send message to background script to handle the API call
+      const response = await chrome.runtime.sendMessage({
+        action: 'matchMarkets',
+        text: tweetText
+      });
+      
+      console.log('Background script response received');
+      
+    } catch (error) {
+      console.error('Error communicating with background script:', error);
+      throw error;
+    }
+  }
+
+  function observeTweets() {
+    if (!isTwitter()) return;
+    
+    console.log('Starting Twitter tweet observation');
+    
+    // Process existing tweets on page load
+    const existingTweets = document.querySelectorAll('[data-testid="tweet"]');
+    existingTweets.forEach(processTweet);
+    
+    // Watch for new tweets
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        mutation.addedNodes.forEach((node) => {
+          if (node.nodeType === Node.ELEMENT_NODE) {
+            // Check if the added node is a tweet
+            if (node.matches && node.matches('[data-testid="tweet"]')) {
+              processTweet(node);
+            }
+            // Check if the added node contains tweets
+            const tweets = node.querySelectorAll && node.querySelectorAll('[data-testid="tweet"]');
+            if (tweets) {
+              tweets.forEach(processTweet);
+            }
+          }
+        });
+      });
+    });
+    
+    // Start observing
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true
+    });
+    
+    console.log('Tweet observer started');
+  }
+
+  // Initialize Twitter integration
+  if (isTwitter()) {
+    // Wait for page to load, then start observing
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', observeTweets);
+    } else {
+      observeTweets();
+    }
+  }
 
 })();

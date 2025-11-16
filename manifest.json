@@ -9,6 +9,7 @@
     "tabs"
   ],
   "host_permissions": [
+    "http://localhost:8000/*",
     "https://betall.de-mo.app/*",
     "https://gamma-api.polymarket.com/*"
   ],
@@ -17,9 +18,15 @@
   },
   "content_scripts": [
     {
-      "matches": ["<all_urls>"],
-      "js": ["content.js"],
-      "css": ["styles.css"]
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "css": [
+        "styles.css"
+      ]
     }
   ],
   "icons": {
