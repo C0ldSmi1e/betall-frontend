@@ -155,8 +155,6 @@
   // Listen for messages from background script
   const messageHandlers = {
     showMarket: (message) => {
-      console.log('📈 MARKET FOUND:', message.market);
-      
       // Find the most recent tweet and add button
       const tweetElement = pendingTweets.pop();
       if (tweetElement) {
@@ -164,11 +162,9 @@
       }
     },
     showError: (message) => {
-      console.log('❌ API ERROR:', message.error);
       pendingTweets.pop(); // Remove from pending
     },
     showEmpty: () => {
-      console.log('🔍 NO MARKETS FOUND');
       pendingTweets.pop(); // Remove from pending
     }
   };
@@ -191,9 +187,7 @@
     const textElement = tweetElement.querySelector(tweetTextSelector);
     
     if (textElement) {
-      const text = textElement.textContent.trim();
-      console.log('Tweet detected:', text);
-      return text;
+      return textElement.textContent.trim();
     }
     
     return null;
@@ -208,7 +202,6 @@
     const tweetText = extractTweetText(tweetElement);
     if (tweetText && tweetText.length >= 10) {
       tweetElement.setAttribute('data-polymarket-processed', 'true');
-      console.log('Processing tweet:', tweetText);
       
       // Store tweet element for later reference
       tweetElement.tweetText = tweetText;
@@ -217,14 +210,12 @@
       try {
         await sendTweetToServer(tweetText, tweetElement);
       } catch (error) {
-        console.error('Error processing tweet:', error);
+        // Silent error handling
       }
     }
   }
 
   async function sendTweetToServer(tweetText, tweetElement) {
-    console.log('Sending tweet to server:', tweetText);
-    
     // Add to pending tweets
     pendingTweets.push(tweetElement);
     
@@ -235,10 +226,7 @@
         text: tweetText
       });
       
-      console.log('Background script response received');
-      
     } catch (error) {
-      console.error('Error communicating with background script:', error);
       throw error;
     }
   }
@@ -320,9 +308,6 @@
       // Insert into the same container as Grok button
       const buttonParentContainer = grokButton.parentElement.parentElement;
       buttonParentContainer.insertBefore(buttonContainer, grokButton.parentElement);
-      console.log('Added Polymarket bet button next to Grok button');
-    } else {
-      console.log('Could not find Grok button to position Polymarket button');
     }
   }
 
@@ -409,11 +394,6 @@
     // Position modal relative to button
     positionHoverModal(hoverModal, buttonElement);
     
-    console.log('Modal added to DOM, positioning...', {
-      modalElement: hoverModal,
-      buttonRect: buttonElement.getBoundingClientRect()
-    });
-    
     // Add hover tracking
     hoverModal.isHovered = false;
     hoverModal.addEventListener('mouseenter', () => {
@@ -443,20 +423,16 @@
     setTimeout(() => {
       hoverModal.style.setProperty('opacity', '1', 'important');
       hoverModal.style.setProperty('transform', 'translateY(0)', 'important');
-      console.log('Modal should now be visible:', hoverModal.getBoundingClientRect());
     }, 10);
     
-    console.log('Hover modal shown');
     return hoverModal;
   }
 
   function positionHoverModal(modal, buttonElement) {
     const buttonRect = buttonElement.getBoundingClientRect();
     const modalWidth = 320;
-    const modalHeight = 220; // Updated for enhanced content
+    const modalHeight = 220;
     const gap = 12;
-    
-    console.log('Button rect:', buttonRect);
     
     // Calculate horizontal position (centered on button)
     let x = buttonRect.left + (buttonRect.width / 2) - (modalWidth / 2);
@@ -474,13 +450,9 @@
       y = buttonRect.bottom + gap;
     }
     
-    console.log('Calculated position:', { x, y, modalWidth, modalHeight });
-    
     // Apply position
     modal.style.setProperty('left', `${x}px`, 'important');
     modal.style.setProperty('top', `${y}px`, 'important');
-    
-    console.log('Applied styles:', modal.style.left, modal.style.top);
   }
 
   function hideHoverModal(hoverModal) {
@@ -492,14 +464,11 @@
           hoverModal.remove();
         }
       }, 200);
-      console.log('Hover modal hidden');
     }
   }
 
   function observeTweets() {
     if (!isTwitter()) return;
-    
-    console.log('Starting Twitter tweet observation');
     
     // Process existing tweets on page load
     const existingTweets = document.querySelectorAll('[data-testid="tweet"]');
@@ -529,8 +498,6 @@
       childList: true,
       subtree: true
     });
-    
-    console.log('Tweet observer started');
   }
 
   // Initialize Twitter integration
