@@ -263,19 +263,10 @@
     buttonContent.textContent = 'Bet';
     
     // Add hover handlers for modal
-    let hoverTimer = null;
     let currentHoverModal = null;
     
     button.addEventListener('mouseenter', () => {
-      // Clear any existing timer
-      if (hoverTimer) {
-        clearTimeout(hoverTimer);
-      }
-      
-      // Show modal after delay
-      hoverTimer = setTimeout(() => {
-        currentHoverModal = showHoverModal(marketData, button);
-      }, 500);
+      currentHoverModal = showHoverModal(marketData, button);
     });
     
     button.addEventListener('mouseleave', () => {
