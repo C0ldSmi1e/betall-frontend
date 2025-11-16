@@ -306,16 +306,7 @@
       }, 100);
     });
     
-    // Keep click handler as backup
-    button.addEventListener('click', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      console.log('Bet button clicked');
-      if (currentHoverModal) {
-        hideHoverModal(currentHoverModal);
-      }
-      showMarketModal(marketData);
-    });
+    // Remove click handler - only use hover modal
     
     // Assemble button structure
     button.appendChild(buttonContent);
@@ -345,7 +336,7 @@
       border: 1px solid #2A2A2A !important;
       border-radius: 12px !important;
       padding: 16px !important;
-      width: 280px !important;
+      width: 320px !important;
       box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4) !important;
       z-index: 999999 !important;
       opacity: 0;
@@ -355,41 +346,60 @@
       pointer-events: auto !important;
     `;
     
-    // Create modal content
+    // Create enhanced modal content with payouts
     hoverModal.innerHTML = `
-      <div style="margin-bottom: 12px;">
-        <div style="color: #F5C842; font-size: 10px; font-weight: 600; letter-spacing: 0.8px; margin-bottom: 8px;">POLYMARKET</div>
-        <div style="color: #FFFFFF; font-size: 14px; font-weight: 500; line-height: 1.3; margin-bottom: 12px;">${escapeHtml(marketData.question)}</div>
+      <div style="margin-bottom: 16px;">
+        <div style="color: #F5C842; font-size: 11px; font-weight: 600; letter-spacing: 1px; margin-bottom: 8px;">POLYMARKET</div>
+        <h2 style="color: #FFFFFF; font-size: 16px; font-weight: 500; margin: 0 0 16px 0; line-height: 1.4;">${escapeHtml(marketData.question)}</h2>
       </div>
       
-      <div style="display: flex; gap: 8px; margin-bottom: 12px;">
-        <div style="flex: 1; background: #2A2A2A; border-radius: 6px; padding: 8px 10px; border-left: 3px solid #00D395;">
-          <div style="display: flex; justify-content: space-between; align-items: center;">
-            <span style="color: #FFFFFF; font-size: 12px; font-weight: 600;">Yes</span>
-            <span style="color: #00D395; font-size: 12px; font-weight: 600;">${marketData.yesPercentage}%</span>
+      <div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px;">
+        <div style="background: #2A2A2A; border-radius: 6px; padding: 12px 16px; border-left: 4px solid #00D395; transition: background 0.2s;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <span style="color: #FFFFFF; font-size: 14px; font-weight: 600;">Yes</span>
+              <span style="color: #00D395; font-size: 14px;">${marketData.yesPercentage}%</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <span style="color: #A0A0A0; font-size: 12px;">$10 →</span>
+              <span style="color: #00D395; font-size: 16px; font-weight: 600;">$${marketData.yesPayout}</span>
+            </div>
           </div>
         </div>
-        <div style="flex: 1; background: #2A2A2A; border-radius: 6px; padding: 8px 10px; border-left: 3px solid #FF5A7A;">
-          <div style="display: flex; justify-content: space-between; align-items: center;">
-            <span style="color: #FFFFFF; font-size: 12px; font-weight: 600;">No</span>
-            <span style="color: #FF5A7A; font-size: 12px; font-weight: 600;">${marketData.noPercentage}%</span>
+
+        <div style="background: #2A2A2A; border-radius: 6px; padding: 12px 16px; border-left: 4px solid #FF5A7A; transition: background 0.2s;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <span style="color: #FFFFFF; font-size: 14px; font-weight: 600;">No</span>
+              <span style="color: #FF5A7A; font-size: 14px;">${marketData.noPercentage}%</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <span style="color: #A0A0A0; font-size: 12px;">$10 →</span>
+              <span style="color: #FF5A7A; font-size: 16px; font-weight: 600;">$${marketData.noPayout}</span>
+            </div>
           </div>
         </div>
       </div>
       
       <a href="${escapeHtml(marketData.url)}" target="_blank" class="polymarket-hover-bet-button" style="
-        display: block;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        width: 100%;
         background: #F5C842;
         color: #000;
-        text-decoration: none;
-        text-align: center;
-        padding: 8px 12px;
-        border-radius: 6px;
-        font-size: 12px;
+        font-size: 14px;
         font-weight: 600;
+        padding: 12px;
+        border-radius: 6px;
+        text-decoration: none;
         transition: background 0.2s;
       ">
-        Place Bet →
+        Place Bet
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M7 17L17 7M17 7H7M17 7V17" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
       </a>
     `;
     
@@ -442,8 +452,8 @@
 
   function positionHoverModal(modal, buttonElement) {
     const buttonRect = buttonElement.getBoundingClientRect();
-    const modalWidth = 280;
-    const modalHeight = 160; // Approximate height
+    const modalWidth = 320;
+    const modalHeight = 220; // Updated for enhanced content
     const gap = 12;
     
     console.log('Button rect:', buttonRect);
