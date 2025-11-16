@@ -22,20 +22,22 @@ async function handleMatchMarkets(text, tabId) {
       throw new Error(`Match API error: ${response.error}`);
     }
     
-    const slugs = response.data?.slugs || [];
+    // slugs: { slug: string, similarity: number }[]
+    // filter slugs by similarity > 0.5
+    const slugs = response.data?.slugs?.filter(slug => slug.similarity > 0.5) || [];
     
     if (!Array.isArray(slugs) || slugs.length === 0) {
       chrome.tabs.sendMessage(tabId, { action: 'showEmpty' });
       return;
     }
-    
+
     // Step 2: Fetch market details for the first slug
-    const firstSlug = slugs[0];
-    const marketUrl = `https://gamma-api.polymarket.com/markets/slug/${firstSlug}`;
+    const randomSlug = slugs[Math.floor(Math.random() * slugs.length)];
+    const marketUrl = `https://gamma-api.polymarket.com/markets/slug/${randomSlug.slug}`;
     
     const marketResponse = await fetch(marketUrl);
     if (!marketResponse.ok) {
-      throw new Error(`Failed to fetch market ${firstSlug}: ${marketResponse.status}`);
+      throw new Error(`Failed to fetch market ${randomSlug.slug}: ${marketResponse.status}`);
     }
     
     const marketData = await marketResponse.json();
