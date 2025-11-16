@@ -274,11 +274,46 @@
     `;
     buttonContent.textContent = 'Bet';
     
-    // Add click handler to show modal
+    // Add hover handlers for modal
+    let hoverTimer = null;
+    let currentHoverModal = null;
+    
+    button.addEventListener('mouseenter', () => {
+      // Clear any existing timer
+      if (hoverTimer) {
+        clearTimeout(hoverTimer);
+      }
+      
+      // Show modal after delay
+      hoverTimer = setTimeout(() => {
+        currentHoverModal = showHoverModal(marketData, button);
+      }, 500);
+    });
+    
+    button.addEventListener('mouseleave', () => {
+      // Clear timer if user leaves before delay
+      if (hoverTimer) {
+        clearTimeout(hoverTimer);
+        hoverTimer = null;
+      }
+      
+      // Hide modal with small delay to allow moving to modal
+      setTimeout(() => {
+        if (currentHoverModal && !currentHoverModal.isHovered) {
+          hideHoverModal(currentHoverModal);
+          currentHoverModal = null;
+        }
+      }, 100);
+    });
+    
+    // Keep click handler as backup
     button.addEventListener('click', (e) => {
       e.preventDefault();
       e.stopPropagation();
       console.log('Bet button clicked');
+      if (currentHoverModal) {
+        hideHoverModal(currentHoverModal);
+      }
       showMarketModal(marketData);
     });
     
@@ -297,6 +332,157 @@
       console.log('Added Polymarket bet button next to Grok button');
     } else {
       console.log('Could not find Grok button to position Polymarket button');
+    }
+  }
+
+  function showHoverModal(marketData, buttonElement) {
+    // Create compact hover modal
+    const hoverModal = document.createElement('div');
+    hoverModal.className = 'polymarket-hover-modal';
+    hoverModal.style.cssText = `
+      position: fixed !important;
+      background: #1A1A1A !important;
+      border: 1px solid #2A2A2A !important;
+      border-radius: 12px !important;
+      padding: 16px !important;
+      width: 280px !important;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4) !important;
+      z-index: 999999 !important;
+      opacity: 0;
+      transform: translateY(4px);
+      transition: all 0.2s ease;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      pointer-events: auto !important;
+    `;
+    
+    // Create modal content
+    hoverModal.innerHTML = `
+      <div style="margin-bottom: 12px;">
+        <div style="color: #F5C842; font-size: 10px; font-weight: 600; letter-spacing: 0.8px; margin-bottom: 8px;">POLYMARKET</div>
+        <div style="color: #FFFFFF; font-size: 14px; font-weight: 500; line-height: 1.3; margin-bottom: 12px;">${escapeHtml(marketData.question)}</div>
+      </div>
+      
+      <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+        <div style="flex: 1; background: #2A2A2A; border-radius: 6px; padding: 8px 10px; border-left: 3px solid #00D395;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="color: #FFFFFF; font-size: 12px; font-weight: 600;">Yes</span>
+            <span style="color: #00D395; font-size: 12px; font-weight: 600;">${marketData.yesPercentage}%</span>
+          </div>
+        </div>
+        <div style="flex: 1; background: #2A2A2A; border-radius: 6px; padding: 8px 10px; border-left: 3px solid #FF5A7A;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="color: #FFFFFF; font-size: 12px; font-weight: 600;">No</span>
+            <span style="color: #FF5A7A; font-size: 12px; font-weight: 600;">${marketData.noPercentage}%</span>
+          </div>
+        </div>
+      </div>
+      
+      <a href="${escapeHtml(marketData.url)}" target="_blank" class="polymarket-hover-bet-button" style="
+        display: block;
+        background: #F5C842;
+        color: #000;
+        text-decoration: none;
+        text-align: center;
+        padding: 8px 12px;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 600;
+        transition: background 0.2s;
+      ">
+        Place Bet →
+      </a>
+    `;
+    
+    // Add to page first
+    document.body.appendChild(hoverModal);
+    
+    // Position modal relative to button
+    positionHoverModal(hoverModal, buttonElement);
+    
+    console.log('Modal added to DOM, positioning...', {
+      modalElement: hoverModal,
+      buttonRect: buttonElement.getBoundingClientRect()
+    });
+    
+    // Add hover tracking
+    hoverModal.isHovered = false;
+    hoverModal.addEventListener('mouseenter', () => {
+      hoverModal.isHovered = true;
+    });
+    hoverModal.addEventListener('mouseleave', () => {
+      hoverModal.isHovered = false;
+      setTimeout(() => {
+        if (!hoverModal.isHovered) {
+          hideHoverModal(hoverModal);
+        }
+      }, 100);
+    });
+
+    // Add hover effect to bet button
+    const betButton = hoverModal.querySelector('.polymarket-hover-bet-button');
+    if (betButton) {
+      betButton.addEventListener('mouseenter', () => {
+        betButton.style.background = '#E5B832';
+      });
+      betButton.addEventListener('mouseleave', () => {
+        betButton.style.background = '#F5C842';
+      });
+    }
+    
+    // Animate in
+    setTimeout(() => {
+      hoverModal.style.setProperty('opacity', '1', 'important');
+      hoverModal.style.setProperty('transform', 'translateY(0)', 'important');
+      console.log('Modal should now be visible:', hoverModal.getBoundingClientRect());
+    }, 10);
+    
+    console.log('Hover modal shown');
+    return hoverModal;
+  }
+
+  function positionHoverModal(modal, buttonElement) {
+    const buttonRect = buttonElement.getBoundingClientRect();
+    const modalWidth = 280;
+    const modalHeight = 160; // Approximate height
+    const gap = 12;
+    
+    console.log('Button rect:', buttonRect);
+    
+    // Calculate horizontal position (centered on button)
+    let x = buttonRect.left + (buttonRect.width / 2) - (modalWidth / 2);
+    
+    // Ensure modal doesn't go off screen horizontally
+    const viewportWidth = window.innerWidth;
+    if (x < 10) x = 10;
+    if (x + modalWidth > viewportWidth - 10) x = viewportWidth - modalWidth - 10;
+    
+    // Calculate vertical position (prefer above button)
+    let y = buttonRect.top - modalHeight - gap;
+    
+    // If not enough space above, show below
+    if (y < 10) {
+      y = buttonRect.bottom + gap;
+    }
+    
+    console.log('Calculated position:', { x, y, modalWidth, modalHeight });
+    
+    // Apply position
+    modal.style.setProperty('left', `${x}px`, 'important');
+    modal.style.setProperty('top', `${y}px`, 'important');
+    
+    console.log('Applied styles:', modal.style.left, modal.style.top);
+  }
+
+  function hideHoverModal(hoverModal) {
+    if (hoverModal && hoverModal.parentElement) {
+      hoverModal.style.opacity = '0';
+      hoverModal.style.transform = 'translateY(4px)';
+      setTimeout(() => {
+        if (hoverModal.parentElement) {
+          hoverModal.remove();
+        }
+      }, 200);
+      console.log('Hover modal hidden');
     }
   }
 
