@@ -149,25 +149,27 @@
     return text.replace(/[&<>"']/g, function(m) { return map[m]; });
   }
 
+  // Store tweets waiting for responses
+  const pendingTweets = [];
+
   // Listen for messages from background script
   const messageHandlers = {
     showMarket: (message) => {
       console.log('📈 MARKET FOUND:', message.market);
-      console.log('Market details:', {
-        question: message.market.question,
-        slug: message.market.slug,
-        yesPercentage: message.market.yesPercentage,
-        noPercentage: message.market.noPercentage,
-        yesPayout: message.market.yesPayout,
-        noPayout: message.market.noPayout,
-        url: message.market.url
-      });
+      
+      // Find the most recent tweet and add button
+      const tweetElement = pendingTweets.pop();
+      if (tweetElement) {
+        addBetButton(tweetElement, message.market);
+      }
     },
     showError: (message) => {
       console.log('❌ API ERROR:', message.error);
+      pendingTweets.pop(); // Remove from pending
     },
     showEmpty: () => {
-      console.log('🔍 NO MARKETS FOUND for this tweet');
+      console.log('🔍 NO MARKETS FOUND');
+      pendingTweets.pop(); // Remove from pending
     }
   };
 
@@ -208,6 +210,9 @@
       tweetElement.setAttribute('data-polymarket-processed', 'true');
       console.log('Processing tweet:', tweetText);
       
+      // Store tweet element for later reference
+      tweetElement.tweetText = tweetText;
+      
       // Send to server
       try {
         await sendTweetToServer(tweetText, tweetElement);
@@ -220,9 +225,12 @@
   async function sendTweetToServer(tweetText, tweetElement) {
     console.log('Sending tweet to server:', tweetText);
     
+    // Add to pending tweets
+    pendingTweets.push(tweetElement);
+    
     try {
       // Send message to background script to handle the API call
-      const response = await chrome.runtime.sendMessage({
+      await chrome.runtime.sendMessage({
         action: 'matchMarkets',
         text: tweetText
       });
@@ -232,6 +240,63 @@
     } catch (error) {
       console.error('Error communicating with background script:', error);
       throw error;
+    }
+  }
+
+  function addBetButton(tweetElement, marketData) {
+    // Create button container to match Twitter's button structure
+    const buttonContainer = document.createElement('div');
+    buttonContainer.className = 'css-175oi2r r-1awozwy r-6koalj r-18u37iz';
+    
+    const buttonInner = document.createElement('div');
+    buttonInner.className = 'css-175oi2r';
+    
+    const buttonWrapper = document.createElement('div');
+    buttonWrapper.className = 'css-175oi2r r-18u37iz r-1h0z5md';
+    
+    // Create bet button
+    const button = document.createElement('button');
+    button.setAttribute('aria-label', 'View prediction market');
+    button.setAttribute('role', 'button');
+    button.className = 'css-175oi2r r-1777fci r-bt1l66 r-bztko3 r-lrvibr r-1loqt21 r-1ny4l3l';
+    button.setAttribute('type', 'button');
+    
+    const buttonContent = document.createElement('div');
+    buttonContent.setAttribute('dir', 'ltr');
+    buttonContent.className = 'css-146c3p1 r-bcqeeo r-1ttztb7 r-qvutc0 r-37j5jr r-a023e6 r-rjixqe r-16dba41 r-1awozwy r-6koalj r-1h0z5md r-o7ynqc r-clp7b1 r-3s2u2q';
+    buttonContent.style.cssText = `
+      color: #000 !important;
+      background-color: #F5C842 !important;
+      font-size: 13px;
+      font-weight: 600;
+      padding: 0 8px;
+      border-radius: 16px;
+    `;
+    buttonContent.textContent = 'Bet';
+    
+    // Add click handler to show modal
+    button.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      console.log('Bet button clicked');
+      showMarketModal(marketData);
+    });
+    
+    // Assemble button structure
+    button.appendChild(buttonContent);
+    buttonWrapper.appendChild(button);
+    buttonInner.appendChild(buttonWrapper);
+    buttonContainer.appendChild(buttonInner);
+    
+    // Find the Grok button and insert before it
+    const grokButton = tweetElement.querySelector('button[aria-label="Grok actions"]');
+    if (grokButton && grokButton.parentElement && grokButton.parentElement.parentElement) {
+      // Insert into the same container as Grok button
+      const buttonParentContainer = grokButton.parentElement.parentElement;
+      buttonParentContainer.insertBefore(buttonContainer, grokButton.parentElement);
+      console.log('Added Polymarket bet button next to Grok button');
+    } else {
+      console.log('Could not find Grok button to position Polymarket button');
     }
   }
 
