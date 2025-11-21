@@ -176,10 +176,8 @@ Slugs found: ${message.debug?.slugs || []}
     const questionText = document.createElement('span');
     questionText.style.cssText = `
       color: #F5C842;
-      font-size: 13px;
+      font-size: 14px;
       font-weight: 500;
-      flex: 1;
-      text-align: left;
     `;
     
     // Truncate long questions elegantly for single line
@@ -338,8 +336,8 @@ Slugs found: ${message.debug?.slugs || []}
     const modalHeight = 220;
     const gap = 12;
     
-    // Calculate horizontal position (centered on button)
-    let x = buttonRect.left + (buttonRect.width / 2) - (modalWidth / 2);
+    // Calculate horizontal position (left-aligned with button)
+    let x = buttonRect.left;
     
     // Ensure modal doesn't go off screen horizontally
     const viewportWidth = window.innerWidth;
