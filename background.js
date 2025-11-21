@@ -1,11 +1,11 @@
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === 'matchMarkets') {
-    handleMatchMarkets(message.text, sender.tab.id);
+    handleMatchMarkets(message.text, sender.tab.id, message.requestId);
     return true; // Keep the message channel open for async response
   }
 });
 
-async function handleMatchMarkets(text, tabId) {
+async function handleMatchMarkets(text, tabId, requestId) {
   try {
     // Step 1: Call matching API to get slugs
     // const matchUrl = `https://betall.de-mo.app/api/match?query=${encodeURIComponent(text)}`;
@@ -30,6 +30,7 @@ async function handleMatchMarkets(text, tabId) {
     if (!Array.isArray(slugs) || slugs.length === 0) {
       chrome.tabs.sendMessage(tabId, { 
         action: 'showEmpty',
+        requestId: requestId,
         debug: { text, slugs: [] }
       });
       return;
@@ -52,6 +53,7 @@ async function handleMatchMarkets(text, tabId) {
     chrome.tabs.sendMessage(tabId, {
       action: 'showMarket',
       market: formattedMarket,
+      requestId: requestId,
       debug: { text, slugs, selectedSlug: randomSlug, marketData }
     });
     
@@ -59,7 +61,8 @@ async function handleMatchMarkets(text, tabId) {
     console.error('Error in background script:', error);
     chrome.tabs.sendMessage(tabId, {
       action: 'showError',
-      error: 'Failed to fetch markets. Please try again.'
+      error: 'Failed to fetch markets. Please try again.',
+      requestId: requestId
     });
   }
 }

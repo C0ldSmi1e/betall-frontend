@@ -15,16 +15,19 @@
     return text.replace(/[&<>"']/g, function(m) { return map[m]; });
   }
 
-  // Store tweets waiting for responses
-  const pendingTweets = [];
+  // Store tweets waiting for responses with unique IDs
+  const pendingTweets = new Map(); // requestId -> tweetElement
+  let requestCounter = 0;
 
   // Listen for messages from background script
   const messageHandlers = {
     showMarket: (message) => {
-      // Find the most recent tweet and add button
-      const tweetElement = pendingTweets.pop();
+      const requestId = message.requestId;
+      const tweetElement = pendingTweets.get(requestId);
       if (tweetElement) {
+        pendingTweets.delete(requestId);
         console.log('\n=== POLYMARKET MATCH FOUND ===');
+        console.log('Request ID:', requestId);
         console.log('Tweet:', message.debug?.text || tweetElement.tweetText);
         console.log('All matching slugs:', message.debug?.slugs || []);
         console.log('Selected slug:', message.debug?.selectedSlug);
@@ -35,18 +38,24 @@
       }
     },
     showError: (message) => {
-      const tweetElement = pendingTweets.pop();
+      const requestId = message.requestId;
+      const tweetElement = pendingTweets.get(requestId);
       if (tweetElement) {
+        pendingTweets.delete(requestId);
         console.log('\n=== POLYMARKET ERROR ===');
+        console.log('Request ID:', requestId);
         console.log('Tweet:', tweetElement.tweetText);
         console.log('Error:', message.error);
         console.log('========================\n');
       }
     },
     showEmpty: (message) => {
-      const tweetElement = pendingTweets.pop();
+      const requestId = message.requestId;
+      const tweetElement = pendingTweets.get(requestId);
       if (tweetElement) {
+        pendingTweets.delete(requestId);
         console.log('\n=== NO POLYMARKET MATCH ===');
+        console.log('Request ID:', requestId);
         console.log('Tweet:', message.debug?.text || tweetElement.tweetText);
         console.log('Slugs found:', message.debug?.slugs || []);
         console.log('===========================\n');
@@ -101,17 +110,23 @@
   }
 
   async function sendTweetToServer(tweetText, tweetElement) {
-    // Add to pending tweets
-    pendingTweets.push(tweetElement);
+    // Generate unique request ID
+    const requestId = ++requestCounter;
+    
+    // Add to pending tweets with unique ID
+    pendingTweets.set(requestId, tweetElement);
     
     try {
       // Send message to background script to handle the API call
       await chrome.runtime.sendMessage({
         action: 'matchMarkets',
-        text: tweetText
+        text: tweetText,
+        requestId: requestId
       });
       
     } catch (error) {
+      // Clean up on error
+      pendingTweets.delete(requestId);
       throw error;
     }
   }
