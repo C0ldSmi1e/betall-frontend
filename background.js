@@ -23,9 +23,13 @@ async function handleMatchMarkets(text, tabId, requestId) {
       throw new Error(`Match API error: ${response.error}`);
     }
     
+    // Get user's similarity threshold setting
+    const settings = await chrome.storage.sync.get({ similarityThreshold: 0.5 });
+    const threshold = settings.similarityThreshold;
+    
     // slugs: { slug: string, similarity: number }[]
-    // filter slugs by similarity > 0.5
-    const slugs = response.data?.slugs || [];
+    // filter slugs by user's similarity threshold
+    const slugs = response.data?.slugs.filter(slug => slug.similarity > threshold) || [];
     
     if (!Array.isArray(slugs) || slugs.length === 0) {
       chrome.tabs.sendMessage(tabId, { 
