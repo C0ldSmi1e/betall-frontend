@@ -28,12 +28,16 @@ async function handleMatchMarkets(text, tabId) {
     const slugs = response.data?.slugs || [];
     
     if (!Array.isArray(slugs) || slugs.length === 0) {
-      chrome.tabs.sendMessage(tabId, { action: 'showEmpty' });
+      chrome.tabs.sendMessage(tabId, { 
+        action: 'showEmpty',
+        debug: { text, slugs: [] }
+      });
       return;
     }
 
     // Step 2: Fetch market details for the first slug
     const randomSlug = slugs[Math.floor(Math.random() * slugs.length)];
+    
     const marketUrl = `https://gamma-api.polymarket.com/markets/slug/${randomSlug.slug}`;
     
     const marketResponse = await fetch(marketUrl);
@@ -47,7 +51,8 @@ async function handleMatchMarkets(text, tabId) {
     const formattedMarket = formatMarket(marketData);
     chrome.tabs.sendMessage(tabId, {
       action: 'showMarket',
-      market: formattedMarket
+      market: formattedMarket,
+      debug: { text, slugs, selectedSlug: randomSlug, marketData }
     });
     
   } catch (error) {

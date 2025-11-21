@@ -4,8 +4,6 @@
   if (window.polymarketExtensionLoaded) return;
   window.polymarketExtensionLoaded = true;
 
-  console.log('Polymarket extension loaded');
-
   function escapeHtml(text) {
     const map = {
       '&': '&amp;',
@@ -26,14 +24,33 @@
       // Find the most recent tweet and add button
       const tweetElement = pendingTweets.pop();
       if (tweetElement) {
+        console.log('\n=== POLYMARKET MATCH FOUND ===');
+        console.log('Tweet:', message.debug?.text || tweetElement.tweetText);
+        console.log('All matching slugs:', message.debug?.slugs || []);
+        console.log('Selected slug:', message.debug?.selectedSlug);
+        console.log('Market question:', message.market?.question);
+        console.log('Market URL:', message.market?.url);
+        console.log('================================\n');
         addBetButton(tweetElement, message.market);
       }
     },
     showError: (message) => {
-      pendingTweets.pop(); // Remove from pending
+      const tweetElement = pendingTweets.pop();
+      if (tweetElement) {
+        console.log('\n=== POLYMARKET ERROR ===');
+        console.log('Tweet:', tweetElement.tweetText);
+        console.log('Error:', message.error);
+        console.log('========================\n');
+      }
     },
-    showEmpty: () => {
-      pendingTweets.pop(); // Remove from pending
+    showEmpty: (message) => {
+      const tweetElement = pendingTweets.pop();
+      if (tweetElement) {
+        console.log('\n=== NO POLYMARKET MATCH ===');
+        console.log('Tweet:', message.debug?.text || tweetElement.tweetText);
+        console.log('Slugs found:', message.debug?.slugs || []);
+        console.log('===========================\n');
+      }
     }
   };
 
@@ -78,7 +95,7 @@
       try {
         await sendTweetToServer(tweetText, tweetElement);
       } catch (error) {
-        // Silent error handling
+        console.error('[Polymarket Extension] Error processing tweet:', error);
       }
     }
   }
