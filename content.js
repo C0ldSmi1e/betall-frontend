@@ -35,7 +35,7 @@ Market question: ${JSON.stringify(message.market?.question || {})}
 Market URL: ${JSON.stringify(message.market?.url || {})}
 ================================\n`;
         console.log(logText);
-        addBetButton(tweetElement, message.market);
+        addBetButton(tweetElement, message.market, message.debug?.selectedSlug);
       }
     },
     showError: (message) => {
@@ -134,7 +134,7 @@ Slugs found: ${message.debug?.slugs || []}
     }
   }
 
-  function addBetButton(tweetElement, marketData) {
+  function addBetButton(tweetElement, marketData, selectedSlug) {
     // Find the tweet text element to insert before it
     const tweetTextElement = tweetElement.querySelector('[data-testid="tweetText"]');
     if (!tweetTextElement) return;
@@ -180,8 +180,13 @@ Slugs found: ${message.debug?.slugs || []}
       font-weight: 500;
     `;
     
+    // Add similarity score if available
+    const similarity = selectedSlug?.similarity;
+    const similarityText = similarity ? ` | ${(similarity * 100).toFixed(0)}%` : '';
+    
     // Truncate long questions elegantly for single line
-    questionText.innerHTML = `${escapeHtml(marketData.question)}`;
+    const baseText = escapeHtml(marketData.question);
+    questionText.innerHTML = `${baseText}<span style="opacity: 0.7; font-weight: 400;">${similarityText}</span>`;
     
     // Add hover effects
     button.addEventListener('mouseenter', () => {
