@@ -161,12 +161,12 @@ Slugs found: ${message.debug?.slugs || []}
       display: flex;
       align-items: center;
       gap: 8px;
-      width: 100%;
+      width: auto;
       background: #1A1A1A;
       border: 1px solid #2A2A2A;
       border-left: 3px solid #F5C842;
       border-radius: 6px;
-      padding: 8px 12px;
+      padding: 8px 8px;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       cursor: pointer;
       transition: all 0.2s ease;
@@ -180,18 +180,10 @@ Slugs found: ${message.debug?.slugs || []}
       font-weight: 500;
       flex: 1;
       text-align: left;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
     `;
     
     // Truncate long questions elegantly for single line
-    const maxLength = 50;
-    const displayText = marketData.question.length > maxLength 
-      ? marketData.question.substring(0, maxLength) + '...' 
-      : marketData.question;
-    
-    questionText.innerHTML = `${escapeHtml(displayText)}`;
+    questionText.innerHTML = `${escapeHtml(marketData.question)}`;
     
     // Add hover effects
     button.addEventListener('mouseenter', () => {
