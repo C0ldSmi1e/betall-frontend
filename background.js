@@ -8,8 +8,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 async function handleMatchMarkets(text, tabId) {
   try {
     // Step 1: Call matching API to get slugs
-    const matchUrl = `https://betall.de-mo.app/api/match?query=${encodeURIComponent(text)}`;
-    // const matchUrl = `http://localhost:8000/api/match?query=${encodeURIComponent(text)}`;
+    // const matchUrl = `https://betall.de-mo.app/api/match?query=${encodeURIComponent(text)}`;
+    const matchUrl = `http://localhost:8000/api/match?query=${encodeURIComponent(text)}`;
     
     const matchResponse = await fetch(matchUrl);
     if (!matchResponse.ok) {
@@ -25,7 +25,7 @@ async function handleMatchMarkets(text, tabId) {
     
     // slugs: { slug: string, similarity: number }[]
     // filter slugs by similarity > 0.5
-    const slugs = response.data?.slugs?.filter(slug => slug.similarity > 0.5) || [];
+    const slugs = response.data?.slugs || [];
     
     if (!Array.isArray(slugs) || slugs.length === 0) {
       chrome.tabs.sendMessage(tabId, { action: 'showEmpty' });
