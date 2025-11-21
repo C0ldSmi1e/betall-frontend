@@ -26,14 +26,15 @@
       const tweetElement = pendingTweets.get(requestId);
       if (tweetElement) {
         pendingTweets.delete(requestId);
-        console.log('\n=== POLYMARKET MATCH FOUND ===');
-        console.log('Request ID:', requestId);
-        console.log('Tweet:', message.debug?.text || tweetElement.tweetText);
-        console.log('All matching slugs:', message.debug?.slugs || []);
-        console.log('Selected slug:', message.debug?.selectedSlug);
-        console.log('Market question:', message.market?.question);
-        console.log('Market URL:', message.market?.url);
-        console.log('================================\n');
+        const logText = `=== POLYMARKET MATCH FOUND ===
+Request ID: ${requestId}
+Tweet: ${message.debug?.text || tweetElement.tweetText}
+All matching slugs: ${JSON.stringify(message.debug?.slugs || [])}
+Selected slug: ${JSON.stringify(message.debug?.selectedSlug || {})}
+Market question: ${JSON.stringify(message.market?.question || {})}
+Market URL: ${JSON.stringify(message.market?.url || {})}
+================================\n`;
+        console.log(logText);
         addBetButton(tweetElement, message.market);
       }
     },
@@ -42,11 +43,12 @@
       const tweetElement = pendingTweets.get(requestId);
       if (tweetElement) {
         pendingTweets.delete(requestId);
-        console.log('\n=== POLYMARKET ERROR ===');
-        console.log('Request ID:', requestId);
-        console.log('Tweet:', tweetElement.tweetText);
-        console.log('Error:', message.error);
-        console.log('========================\n');
+        const logText = `=== POLYMARKET ERROR ===
+Request ID: ${requestId}
+Tweet: ${tweetElement.tweetText}
+Error: ${message.error}
+========================\n`;
+        console.log(logText);
       }
     },
     showEmpty: (message) => {
@@ -54,11 +56,12 @@
       const tweetElement = pendingTweets.get(requestId);
       if (tweetElement) {
         pendingTweets.delete(requestId);
-        console.log('\n=== NO POLYMARKET MATCH ===');
-        console.log('Request ID:', requestId);
-        console.log('Tweet:', message.debug?.text || tweetElement.tweetText);
-        console.log('Slugs found:', message.debug?.slugs || []);
-        console.log('===========================\n');
+        const logText = `=== NO POLYMARKET MATCH ===
+Request ID: ${requestId}
+Tweet: ${message.debug?.text || tweetElement.tweetText}
+Slugs found: ${message.debug?.slugs || []}
+===========================\n`;
+        console.log(logText);
       }
     }
   };
@@ -132,37 +135,76 @@
   }
 
   function addBetButton(tweetElement, marketData) {
-    // Create button container to match Twitter's button structure
+    // Find the tweet text element to insert before it
+    const tweetTextElement = tweetElement.querySelector('[data-testid="tweetText"]');
+    if (!tweetTextElement) return;
+    
+    // Find the parent container of the tweet text
+    const tweetContentContainer = tweetTextElement.parentElement;
+    if (!tweetContentContainer) return;
+    
+    // Create market title button container
     const buttonContainer = document.createElement('div');
-    buttonContainer.className = 'css-175oi2r r-1awozwy r-6koalj r-18u37iz';
+    buttonContainer.className = 'polymarket-market-container';
+    buttonContainer.style.cssText = `
+      margin: 8px 0 4px 0;
+      padding: 0;
+    `;
     
-    const buttonInner = document.createElement('div');
-    buttonInner.className = 'css-175oi2r';
-    
-    const buttonWrapper = document.createElement('div');
-    buttonWrapper.className = 'css-175oi2r r-18u37iz r-1h0z5md';
-    
-    // Create bet button
+    // Create market title button
     const button = document.createElement('button');
     button.setAttribute('aria-label', 'View prediction market');
     button.setAttribute('role', 'button');
-    button.className = 'css-175oi2r r-1777fci r-bt1l66 r-bztko3 r-lrvibr r-1loqt21 r-1ny4l3l';
+    button.className = 'polymarket-market-button';
     button.setAttribute('type', 'button');
-    
-    const buttonContent = document.createElement('div');
-    buttonContent.setAttribute('dir', 'ltr');
-    buttonContent.className = 'css-146c3p1 r-bcqeeo r-1ttztb7 r-qvutc0 r-37j5jr r-a023e6 r-rjixqe r-16dba41 r-1awozwy r-6koalj r-1h0z5md r-o7ynqc r-clp7b1 r-3s2u2q';
-    buttonContent.style.cssText = `
-      color: #000 !important;
-      background-color: #F5C842 !important;
-      font-size: 13px;
-      font-weight: 600;
-      padding: 0 8px;
-      border-radius: 16px;
+    button.style.cssText = `
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      width: 100%;
+      background: #1A1A1A;
+      border: 1px solid #2A2A2A;
+      border-left: 3px solid #F5C842;
+      border-radius: 6px;
+      padding: 8px 12px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      cursor: pointer;
+      transition: all 0.2s ease;
     `;
-    buttonContent.textContent = 'Bet';
     
-    // Add hover handlers for modal
+    // Create market question text
+    const questionText = document.createElement('span');
+    questionText.style.cssText = `
+      color: #F5C842;
+      font-size: 13px;
+      font-weight: 500;
+      flex: 1;
+      text-align: left;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    `;
+    
+    // Truncate long questions elegantly for single line
+    const maxLength = 50;
+    const displayText = marketData.question.length > maxLength 
+      ? marketData.question.substring(0, maxLength) + '...' 
+      : marketData.question;
+    
+    questionText.innerHTML = `${escapeHtml(displayText)}`;
+    
+    // Add hover effects
+    button.addEventListener('mouseenter', () => {
+      button.style.backgroundColor = '#2A2A2A';
+      button.style.borderColor = '#F5C842';
+    });
+    
+    button.addEventListener('mouseleave', () => {
+      button.style.backgroundColor = '#1A1A1A';
+      button.style.borderColor = '#2A2A2A';
+    });
+    
+    // Add hover handlers for modal (same as before)
     let currentHoverModal = null;
     
     button.addEventListener('mouseenter', () => {
@@ -179,21 +221,12 @@
       }, 100);
     });
     
-    // Remove click handler - only use hover modal
+    // Assemble button
+    button.appendChild(questionText);
+    buttonContainer.appendChild(button);
     
-    // Assemble button structure
-    button.appendChild(buttonContent);
-    buttonWrapper.appendChild(button);
-    buttonInner.appendChild(buttonWrapper);
-    buttonContainer.appendChild(buttonInner);
-    
-    // Find the Grok button and insert before it
-    const grokButton = tweetElement.querySelector('button[aria-label="Grok actions"]');
-    if (grokButton && grokButton.parentElement && grokButton.parentElement.parentElement) {
-      // Insert into the same container as Grok button
-      const buttonParentContainer = grokButton.parentElement.parentElement;
-      buttonParentContainer.insertBefore(buttonContainer, grokButton.parentElement);
-    }
+    // Insert before the tweet text content
+    tweetContentContainer.insertBefore(buttonContainer, tweetTextElement);
   }
 
   function showHoverModal(marketData, buttonElement) {
@@ -218,59 +251,53 @@
     
     // Create enhanced modal content with payouts
     hoverModal.innerHTML = `
-      <div style="margin-bottom: 16px;">
-        <div style="color: #F5C842; font-size: 11px; font-weight: 600; letter-spacing: 1px; margin-bottom: 8px;">POLYMARKET</div>
-        <h2 style="color: #FFFFFF; font-size: 16px; font-weight: 500; margin: 0 0 16px 0; line-height: 1.4;">${escapeHtml(marketData.question)}</h2>
-      </div>
-      
-      <div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px;">
-        <div style="background: #2A2A2A; border-radius: 6px; padding: 12px 16px; border-left: 4px solid #00D395; transition: background 0.2s;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-            <div style="display: flex; align-items: center; gap: 10px;">
-              <span style="color: #FFFFFF; font-size: 14px; font-weight: 600;">Yes</span>
-              <span style="color: #00D395; font-size: 14px;">${marketData.yesPercentage}%</span>
+      <div style="display: flex; flex-direction: column; gap: 16px;">
+        <h2 style="color: #FFFFFF; font-size: 16px; font-weight: 500; margin: 0; line-height: 1.4;">${escapeHtml(marketData.question)}</h2>
+        
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; background: #2A2A2A; border-radius: 6px; padding: 12px 16px; border-left: 4px solid #00D395;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <span style="color: #FFFFFF; font-size: 14px; font-weight: 600; min-width: 30px;">Yes</span>
+              <span style="color: #00D395; font-size: 14px; font-weight: 500;">${marketData.yesPercentage}%</span>
             </div>
-            <div style="display: flex; align-items: center; gap: 6px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
               <span style="color: #A0A0A0; font-size: 12px;">$10 →</span>
               <span style="color: #00D395; font-size: 16px; font-weight: 600;">$${marketData.yesPayout}</span>
             </div>
           </div>
-        </div>
 
-        <div style="background: #2A2A2A; border-radius: 6px; padding: 12px 16px; border-left: 4px solid #FF5A7A; transition: background 0.2s;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-            <div style="display: flex; align-items: center; gap: 10px;">
-              <span style="color: #FFFFFF; font-size: 14px; font-weight: 600;">No</span>
-              <span style="color: #FF5A7A; font-size: 14px;">${marketData.noPercentage}%</span>
+          <div style="display: flex; justify-content: space-between; align-items: center; background: #2A2A2A; border-radius: 6px; padding: 12px 16px; border-left: 4px solid #FF5A7A;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <span style="color: #FFFFFF; font-size: 14px; font-weight: 600; min-width: 30px;">No</span>
+              <span style="color: #FF5A7A; font-size: 14px; font-weight: 500;">${marketData.noPercentage}%</span>
             </div>
-            <div style="display: flex; align-items: center; gap: 6px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
               <span style="color: #A0A0A0; font-size: 12px;">$10 →</span>
               <span style="color: #FF5A7A; font-size: 16px; font-weight: 600;">$${marketData.noPayout}</span>
             </div>
           </div>
         </div>
+        
+        <a href="${escapeHtml(marketData.url)}" target="_blank" class="polymarket-hover-bet-button" style="
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          background: #F5C842;
+          color: #000;
+          font-size: 14px;
+          font-weight: 600;
+          padding: 12px;
+          border-radius: 6px;
+          text-decoration: none;
+          transition: background 0.2s;
+        ">
+          Place Bet
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+            <path d="M7 17L17 7M17 7H7M17 7V17" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </a>
       </div>
-      
-      <a href="${escapeHtml(marketData.url)}" target="_blank" class="polymarket-hover-bet-button" style="
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 8px;
-        width: 100%;
-        background: #F5C842;
-        color: #000;
-        font-size: 14px;
-        font-weight: 600;
-        padding: 12px;
-        border-radius: 6px;
-        text-decoration: none;
-        transition: background 0.2s;
-      ">
-        Place Bet
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M7 17L17 7M17 7H7M17 7V17" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-      </a>
     `;
     
     // Add to page first
