@@ -100,6 +100,6 @@ function formatMarket(data) {
     noPercentage: (noPrice * 100).toFixed(0),
     yesPayout: calculatePayout(yesPrice, 10),
     noPayout: calculatePayout(noPrice, 10),
-    url: `https://polymarket.com/event/${data.slug || ''}`
+    url: `https://polymarket.com/event/${data.slug || ''}?via=daniel-tsgg`
   };
 }
