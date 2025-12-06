@@ -34,7 +34,7 @@ Selected slug: ${JSON.stringify(message.debug?.selectedSlug || {})}
 Market question: ${JSON.stringify(message.market?.question || {})}
 Market URL: ${JSON.stringify(message.market?.url || {})}
 ================================\n`;
-        console.log(logText);
+        // console.log(logText);
         addBetButton(tweetElement, message.market, message.debug?.selectedSlug);
       }
     },
@@ -48,7 +48,7 @@ Request ID: ${requestId}
 Tweet: ${tweetElement.tweetText}
 Error: ${message.error}
 ========================\n`;
-        console.log(logText);
+        // console.log(logText);
       }
     },
     showEmpty: (message) => {
@@ -61,7 +61,7 @@ Request ID: ${requestId}
 Tweet: ${message.debug?.text || tweetElement.tweetText}
 Slugs found: ${message.debug?.slugs || []}
 ===========================\n`;
-        console.log(logText);
+        // console.log(logText);
       }
     }
   };
@@ -137,11 +137,17 @@ Slugs found: ${message.debug?.slugs || []}
   function addBetButton(tweetElement, marketData, selectedSlug) {
     // Find the tweet text element to insert before it
     const tweetTextElement = tweetElement.querySelector('[data-testid="tweetText"]');
-    if (!tweetTextElement) return;
-    
+    if (!tweetTextElement) {
+      return;
+    }
+
     // Find the parent container of the tweet text
     const tweetContentContainer = tweetTextElement.parentElement;
-    if (!tweetContentContainer) return;
+    if (!tweetContentContainer) {
+      return;
+    }
+
+    console.log("marketData", marketData);
     
     // Create market title button container
     const buttonContainer = document.createElement('div');

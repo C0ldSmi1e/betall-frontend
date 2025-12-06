@@ -19,7 +19,7 @@ document.addEventListener('DOMContentLoaded', async function() {
       if (this.checked) {
         const newThreshold = parseFloat(this.value);
         await chrome.storage.sync.set({ similarityThreshold: newThreshold });
-        console.log('Similarity threshold saved:', newThreshold);
+        // console.log('Similarity threshold saved:', newThreshold);
       }
     });
   });
