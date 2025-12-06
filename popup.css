@@ -21,44 +21,72 @@ h3 {
 
 .setting {
   display: flex;
-  align-items: center;
-  gap: 8px;
+  flex-direction: column;
+  gap: 12px;
   margin-bottom: 12px;
   width: 100%;
 }
 
-label {
+.setting > label {
   font-size: 13px;
   color: #FFFFFF;
-  min-width: 60px;
-  flex-shrink: 0;
+  font-weight: 600;
 }
 
-input[type="range"] {
-  flex: 1;
-  height: 4px;
+.radio-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.radio-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 6px;
   background: #2A2A2A;
-  border-radius: 2px;
-  outline: none;
-  min-width: 0;
+  cursor: pointer;
+  transition: background 0.2s;
 }
 
-input[type="range"]::-webkit-slider-thumb {
+.radio-option:hover {
+  background: #333;
+}
+
+.radio-option input[type="radio"] {
   appearance: none;
   width: 16px;
   height: 16px;
+  border: 2px solid #555;
   border-radius: 50%;
-  background: #F5C842;
+  background: transparent;
   cursor: pointer;
+  position: relative;
+  margin: 0;
 }
 
-#threshold-value {
+.radio-option input[type="radio"]:checked {
+  border-color: #F5C842;
+  background: #F5C842;
+}
+
+.radio-option input[type="radio"]:checked::after {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #000;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.radio-option span {
   font-size: 13px;
-  color: #F5C842;
-  font-weight: 600;
-  min-width: 24px;
-  text-align: right;
-  flex-shrink: 0;
+  color: #FFFFFF;
+  flex: 1;
 }
 
 .help-text {
