@@ -92,14 +92,26 @@ function formatMarket(data) {
   // Convert string prices to numbers
   const yesPrice = parseFloat(outcomePrices[0] || '0.5');
   const noPrice = parseFloat(outcomePrices[1] || '0.5');
-  
+
+  const events = data["events"] || [];
+  const eventSlug = events[0]?.slug || '';
+
+  // "2025-12-31T12:00:00Z"
+  const endDate = data["endDate"] || '';
+  const imageUrl = data["image"] || '';
+  const volume = data["volumeClob"] || 0;
+
   return {
     question: data.question || 'Unknown Market',
     slug: data.slug || '',
+    eventSlug: eventSlug,
     yesPercentage: (yesPrice * 100).toFixed(0),
     noPercentage: (noPrice * 100).toFixed(0),
     yesPayout: calculatePayout(yesPrice, 10),
     noPayout: calculatePayout(noPrice, 10),
-    url: `https://polymarket.com/event/${data.slug || ''}?via=daniel-tsgg`
+    url: `https://polymarket.com/event/${eventSlug || ''}?via=daniel-tsgg`,
+    endDate: endDate,
+    imageUrl: imageUrl,
+    volume: volume,
   };
 }
