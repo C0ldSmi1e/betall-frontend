@@ -134,6 +134,41 @@ Slugs found: ${message.debug?.slugs || []}
     }
   }
 
+  function formatTimeRemaining(endDate) {
+    if (!endDate) return '';
+    
+    const now = new Date();
+    const end = new Date(endDate);
+    const diffMs = end - now;
+    
+    if (diffMs <= 0) return 'Ended';
+    
+    const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    
+    if (days > 0) {
+      return `${days}d left`;
+    } else if (hours > 0) {
+      return `${hours}h left`;
+    } else {
+      const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+      return `${minutes}m left`;
+    }
+  }
+
+  function formatVolume(volume) {
+    if (!volume) return '';
+    
+    const num = parseFloat(volume);
+    if (num >= 1000000) {
+      return `$${(num / 1000000).toFixed(1)}M`;
+    } else if (num >= 1000) {
+      return `$${(num / 1000).toFixed(1)}K`;
+    } else {
+      return `$${num.toFixed(0)}`;
+    }
+  }
+
   function addBetButton(tweetElement, marketData, selectedSlug) {
     // Find the tweet text element to insert before it
     const tweetTextElement = tweetElement.querySelector('[data-testid="tweetText"]');
@@ -165,14 +200,13 @@ Slugs found: ${message.debug?.slugs || []}
     button.setAttribute('type', 'button');
     button.style.cssText = `
       display: flex;
-      align-items: center;
-      gap: 8px;
+      flex-direction: column;
       width: auto;
       background: #1A1A1A;
       border: 1px solid #2A2A2A;
       border-left: 3px solid #F5C842;
       border-radius: 6px;
-      padding: 8px 8px;
+      padding: 0;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       cursor: pointer;
       transition: all 0.2s ease;
@@ -186,13 +220,9 @@ Slugs found: ${message.debug?.slugs || []}
       font-weight: 500;
     `;
     
-    // Add similarity score if available
-    const similarity = selectedSlug?.similarity;
-    const similarityText = similarity ? ` | ${(similarity * 100).toFixed(0)}%` : '';
-    
-    // Truncate long questions elegantly for single line
+    // Create main question text
     const baseText = escapeHtml(marketData.question);
-    questionText.innerHTML = `${baseText}<span style="opacity: 0.7; font-weight: 400;">${similarityText}</span>`;
+    questionText.innerHTML = baseText;
     
     // Add hover effects
     button.addEventListener('mouseenter', () => {
@@ -222,8 +252,66 @@ Slugs found: ${message.debug?.slugs || []}
       }, 100);
     });
     
+    // Create top section (image + question)
+    const topSection = document.createElement('div');
+    topSection.style.cssText = `
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px;
+    `;
+    
+    // Add image if available
+    if (marketData.imageUrl) {
+      const image = document.createElement('img');
+      image.src = marketData.imageUrl;
+      image.alt = 'Market image';
+      image.style.cssText = `
+        width: 32px;
+        height: 32px;
+        object-fit: cover;
+        border-radius: 4px;
+        flex-shrink: 0;
+      `;
+      topSection.appendChild(image);
+    }
+    
+    topSection.appendChild(questionText);
+    
+    // Create bottom section (time + volume)
+    const bottomSection = document.createElement('div');
+    bottomSection.style.cssText = `
+      display: flex;
+      gap: 12px;
+      padding: 6px 8px;
+      border-top: 1px solid #2A2A2A;
+      font-size: 12px;
+      background: rgba(42, 42, 42, 0.3);
+      border-radius: 0 0 4px 4px;
+    `;
+    
+    const timeInfo = formatTimeRemaining(marketData.endDate);
+    const volumeInfo = formatVolume(marketData.volume);
+    
+    if (timeInfo) {
+      const timeSpan = document.createElement('span');
+      timeSpan.style.color = '#F5C842';
+      timeSpan.textContent = timeInfo;
+      bottomSection.appendChild(timeSpan);
+    }
+    
+    if (volumeInfo) {
+      const volumeSpan = document.createElement('span');
+      volumeSpan.style.color = '#A0A0A0';
+      volumeSpan.textContent = `${volumeInfo} volume`;
+      bottomSection.appendChild(volumeSpan);
+    }
+    
     // Assemble button
-    button.appendChild(questionText);
+    button.appendChild(topSection);
+    if (bottomSection.children.length > 0) {
+      button.appendChild(bottomSection);
+    }
     buttonContainer.appendChild(button);
     
     // Insert before the tweet text content
